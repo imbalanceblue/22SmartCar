@@ -14,14 +14,23 @@ def load_columns(csv_path, col_x, col_y):
     ys = []
     with open(csv_path) as f:
         reader = csv.DictReader(f)
-        for row in reader:
-            xs.append(float(row[col_x]))
-            ys.append(float(row[col_y]))
+        if reader.fieldnames is not None and (col_x not in reader.fieldnames or col_y not in reader.fieldnames):
+            # 空文件/缺列都在这里报,信息里带上"实际有哪些列"
+            raise KeyError(f"csv 中没有列 '{col_x}' 或 '{col_y}',实际列为: {reader.fieldnames}")
+        for i, row in enumerate(reader, start=2):   # start=2:表头是第 1 行,数据从第 2 行起
+            try:
+                xs.append(float(row[col_x]))
+                ys.append(float(row[col_y]))
+            except ValueError:
+                # 提示第几行、哪个值转不了
+                raise ValueError(f"第{i}行：无法把 x={row[col_x]} 或 y={row[col_y]}转为数字") from None     # from None:不显示原始链,输出干净
     return xs, ys
 
 def pearson_r(xs, ys):
     """计算相关系数"""
     n = len(xs)
+    if n == 0:
+        raise ValueError("数据为空,无法计算相关系数")
     
     sum_x = 0.0
     sum_y = 0.0
@@ -42,6 +51,8 @@ def pearson_r(xs, ys):
         dy = dy + b * b
         prod = prod + a * b
 
+    if dx == 0 or dy == 0:
+        raise ZeroDivisionError("某列方差为 0,相关系数无定义")
     denom = math.sqrt(dx * dy)
     r = prod / denom
     return r
@@ -65,6 +76,16 @@ def main():
     print("r =", r)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except FileNotFoundError as e:
+        print(f"错误:找不到文件 {e.filename}", file=sys.stderr)
+        sys.exit(1)
+    except KeyError as e:
+        print(f"错误:{e}", file=sys.stderr)
+        sys.exit(1)
+    except (ValueError, ZeroDivisionError) as e:
+        print(f"错误:{e}", file=sys.stderr)
+        sys.exit(1)
     
 
