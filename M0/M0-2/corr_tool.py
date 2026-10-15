@@ -2,6 +2,9 @@ import yaml
 import csv
 import math
 import sys
+import argparse
+from pathlib import Path
+
 
 def load_config(path):
     """读 yaml 配置文件,返回配置字典"""
@@ -59,8 +62,17 @@ def pearson_r(xs, ys):
 
 def main():
     """主流程:读配置 → 读数据 → 计算 → 输出"""
-    cfg = load_config("config.yaml")
-    csv_path = cfg["input_csv"]
+    parser = argparse.ArgumentParser(description="计算两列数据的相关系数")
+    parser.add_argument("--config", help="yaml 配置文件路径")
+    parser.add_argument("config_pos", nargs="?", help="位置参数写法(可选,与 --config 二选一)")
+    args = parser.parse_args()
+    if not args.config and not args.config_pos:                  # ← 自己检查
+        parser.error("必须提供 --config CONFIG 或位置参数 CONFIG")
+    config_path = args.config or args.config_pos
+
+    cfg = load_config(config_path)
+    cfg_dir = Path(config_path).resolve().parent     # 配置文件所在目录(绝对路径)
+    csv_path = cfg_dir / cfg["input_csv"]            # 拼出 csv 的绝对路径
     col_x = cfg["columns"]["x"]
     col_y = cfg["columns"]["y"]
 
