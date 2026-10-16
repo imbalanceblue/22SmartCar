@@ -17,56 +17,86 @@ sensor_analyzer.py  —— 上一届学长留下的"能用"的脚本
 """
 
 import csv
-import os
+import argparse
 import math
-
-INPUT_FILE = "sensor_data.csv"
-OUTPUT_FILE = "cleaned_data.csv"
+import sys
 
 
-data = []
-times = []
-cleaned = []
+def load_data(path):
+    """读 csv,返回 (times, values)。列名不符/空文件/非数值时抛可读异常。"""
+    times, values = [], []
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:                      # 文件完全空(连表头都没有)
+            raise ValueError("输入文件为空: %s" % path)
+        missing = [c for c in ("time", "value") if c not in reader.fieldnames]
+        if missing:                                        # 列名不符
+            raise KeyError("csv 缺少列 %s,实际列为: %s" % (missing, reader.fieldnames))
+        for i, row in enumerate(reader, start=2):          # start=2:表头算第 1 行
+            try:
+                times.append(float(row["time"]))
+                values.append(float(row["value"]))
+            except ValueError:
+                raise ValueError("第 %d 行: 无法把 time=%r value=%r 转为数字"
+                                 % (i, row["time"], row["value"])) from None
+    if not values:                                         # 只有表头,没有数据行
+        raise ValueError("数据为空(只有表头): %s" % path)
+    return times, values
 
-print("=== 传感器数据分析 ===")
+def analyze(values):
+    """计算均值与总体标准差(除以 n)。"""
+    n = len(values)
+    mean = sum(values) / n
+    acc = 0
+    for v in values:
+        acc += (v-mean) ** 2
+    std = math.sqrt(acc / n)
+    return mean, std
 
-# --- 读取数据 ---
-reader = csv.DictReader(open(INPUT_FILE, "r"))
+def clean(times, values, mean, std):
+    """剔除 |v-mean| > 2*std 的离群值,返回 (time, value) 配对列表。"""
+    if std == 0:                                           # 全常数列:剔除无意义,跳过但不崩
+        print("提示: 标准差为 0(全部数值相同),跳过离群值剔除", file=sys.stderr)
+        return list(zip(times, values))
 
-for row in reader:
-    t = float(row["time"])
-    v = float(row["value"])
-    times.append(t)
-    data.append(v)
+    cleaned = []
+    for t, v in zip(times, values):
+        if abs(v - mean) <= 2 * std:
+            cleaned.append((t, v))
+    return cleaned
 
-print("共读取 %d 条数据" % len(data))
+def main():
+    parser = argparse.ArgumentParser(description="传感器数据清洗与统计")
+    parser.add_argument("--input", default="sensor_data.csv", help="输入 csv 路径")
+    parser.add_argument("--output", default="cleaned_data.csv", help="输出 csv 路径")
+    args = parser.parse_args()
 
-# --- 计算平均值 ---
-total = 0
-for v in data:
-    total += v
-mean = total / len(data)
+    times, values = load_data(args.input)
+    mean, std = analyze(values)
+    cleaned = clean(times, values, mean, std)
 
-# --- 计算标准差 ---
-acc = 0
-for v in data:
-    acc += (v - mean) ** 2
-std = math.sqrt(acc / len(data))
+    with open(args.output, "w", newline="") as f:          # newline="" 防止 Windows 式空行
+        writer = csv.writer(f)
+        writer.writerow(["time", "value"])
+        for t, v in cleaned:
+            writer.writerow([t, v])
 
-# --- 剔除离群值 ---
-for t,v in zip(times,data):
-    if abs(v - mean) <= 2 * std:
-        cleaned.append((t,v))
+    print("共读取 %d 条数据" % len(values))
+    print("均值 mean = %.4f" % mean)
+    print("标准差 std = %.4f" % std)
+    print("清洗后剩余 %d 条" % len(cleaned))
+    print("已保存到 %s" % args.output)
 
-# --- 输出清洗后的数据 ---
-output_path = OUTPUT_FILE
-f = open(output_path, "w")
-writer = csv.writer(f)
-writer.writerow(["time", "value"])
-for t,v in cleaned:
-    writer.writerow([t,v])
 
-print("均值 mean = %.4f" % mean)
-print("标准差 std = %.4f" % std)
-print("清洗后剩余 %d 条" % len(cleaned))
-print("已保存到 %s" % output_path)
+if __name__ == "__main__":
+    try:
+        main()
+    except FileNotFoundError as e:
+        print("错误: 找不到文件 %s" % e.filename, file=sys.stderr)
+        sys.exit(1)
+    except KeyError as e:
+        print("错误: %s" % e, file=sys.stderr)
+        sys.exit(1)
+    except ValueError as e:
+        print("错误: %s" % e, file=sys.stderr)
+        sys.exit(1)
