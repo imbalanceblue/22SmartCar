@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 import yaml
+import random
+import time
 
 def load_config(path):
     """读取 yaml/json 配置，校验后返回 (全局 timeout, 任务列表)"""
@@ -122,15 +124,92 @@ def topo_order(tasks):
     return order
 
 
+def run(tasks, timeout, seed):
+    """执行所有任务,返回报告字典"""
+    random.seed(seed)
+    order = topo_order(tasks)
+    by_name = {t["name"]: t for t in tasks}
+    status = {}                      # name -> 最终状态
+    attempts = {}                    # name -> 尝试次数
+    start = time.monotonic()
+
+    def elapsed():
+        return time.monotonic() - start
+
+    def timed_out():
+        return elapsed() >= timeout
+
+    for name in order:
+        t = by_name[name]
+
+        # ① 连坐检查:任一前置不是 SUCCESS 就不跑
+        deps = t.get("dependencies", [])
+        if any(status.get(d) != "SUCCESS" for d in deps):
+            status[name] = "SKIPPED"
+            attempts[name] = 0
+            print(f"[SKIPPED] {name} (前置未成功)")
+            continue
+
+        # ② 执行前查超时
+        if timed_out():
+            status[name] = "TIMEOUT"
+            attempts[name] = 0
+            print(f"[TIMEOUT] {name} (总耗时 {elapsed():.1f}s 已到上限)")
+            continue
+
+        # ③ 最多尝试 3 次
+        ok = False
+        for attempt in range(1, 4):
+            attempts[name] = attempt
+            print(f"[RUN     ] {name} 第 {attempt} 次尝试")
+            time.sleep(t["duration"])
+            # 睡醒后再查一次超时(题目点名要求"执行前后各查一次")
+            if timed_out():
+                status[name] = "TIMEOUT"
+                print(f"[TIMEOUT] {name} (睡眠期间总耗时到达上限)")
+                break
+
+            if random.random() < t["success_rate"]:
+                ok = True
+                break
+            if attempt < 3:
+                print(f"[RETRY   ] {name} 第 {attempt} 次失败,重试")
+
+        # ④ 落最终状态
+        if status.get(name) != "TIMEOUT":      # 别覆盖 TIMEOUT
+            status[name] = "SUCCESS" if ok else "FAILED"
+
+    return {
+        "timeout_occurred": any(s == "TIMEOUT" for s in status.values()),
+        "total_duration": round(elapsed(), 2),
+        "tasks": [
+            {"name": n, "status": status[n], "attempts": attempts.get(n, 0)}
+            for n in by_name           # 按配置顺序输出,保证每个任务都在
+        ],
+    }
+
+
+
 
 if __name__ == "__main__":
-    cfg = sys.argv[1] if len(sys.argv) > 1 else "tasks_demo.yaml"
+    parser = argparse.ArgumentParser(description="M0-4 任务调度模拟器")
+    parser.add_argument("--config", required=True, help="配置文件路径 (.yaml/.json)")
+    parser.add_argument("--timeout", type=float, default=None, help="覆盖配置中的超时秒数")
+    parser.add_argument("--report", default="report.json", help="报告输出路径")
+    parser.add_argument("--seed", type=int, default=None, help="随机种子(复现用)")
+    args = parser.parse_args()
+
     try:
-        timeout, tasks = load_config(cfg)
-        print(f"timeout = {timeout}")
-        print("拓扑顺序:")
-        for name in topo_order(tasks):
-            print(f"  {name}")
+        cfg_timeout, tasks = load_config(args.config)
     except ValueError as e:
         print(f"错误: {e}", file=sys.stderr)
         sys.exit(1)
+
+    if args.timeout is not None:
+        cfg_timeout = args.timeout          # 命令行覆盖配置文件
+
+    report = run(tasks, cfg_timeout, args.seed)
+
+    with open(args.report, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    print(f"\n报告已写入 {args.report}  总耗时 {report['total_duration']}s")
