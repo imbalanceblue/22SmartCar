@@ -1,0 +1,3 @@
+tasks:
+  - name: A
+    success_rate: 0.9

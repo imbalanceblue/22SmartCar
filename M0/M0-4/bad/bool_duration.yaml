@@ -1,0 +1,4 @@
+tasks:
+  - name: A
+    duration: true
+    success_rate: 0.9
