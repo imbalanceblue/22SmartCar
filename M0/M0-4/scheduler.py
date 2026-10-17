@@ -79,14 +79,58 @@ def validate_tasks(tasks):
                 raise ValueError(f"任务 {t['name']} 依赖不存在的任务: {d}")
 
 
+def topo_order(tasks):
+    """返回合法执行顺序(任务名字列表);有环则 raise ValueError"""
+    # 1. 建两张表
+    by_name = {}          # 任务名 -> 任务字典
+    pending = {}          # 任务名 -> 还欠几个前置
+    for t in tasks:
+        name = t["name"]
+        by_name[name] = t
+        deps = t.get("dependencies", [])
+        pending[name] = len(deps)
+
+    # 2. 一开始一个前置都不欠的,放进 ready 队列
+    ready = []
+    for name in pending:
+        if pending[name] == 0:
+            ready.append(name)
+
+    # 3. 反复"取一个 -> 记账 -> 放出下游"
+    order = []
+    while len(ready) > 0:
+        name = ready.pop(0)
+        order.append(name)
+
+        # 谁在等 name?
+        for t in tasks:
+            deps = t.get("dependencies", [])
+            if name in deps:
+                pending[t["name"]] = pending[t["name"]] - 1
+                if pending[t["name"]] == 0:
+                    ready.append(t["name"])
+
+    # 4. 排不完 = 有环
+    if len(order) != len(tasks):
+        remaining = []
+        for name in by_name:
+            if name not in order:
+                remaining.append(name)
+        remaining.sort()
+        raise ValueError("依赖成环，无法调度，涉及任务: " + ", ".join(remaining))
+
+    return order
+
+
+
 if __name__ == "__main__":
     cfg = sys.argv[1] if len(sys.argv) > 1 else "tasks_demo.yaml"
     try:
         timeout, tasks = load_config(cfg)
         print(f"timeout = {timeout}")
-        for t in tasks:
-            print(f"  {t['name']:14s} duration={t['duration']:<5} "
-                  f"rate={t['success_rate']:<5} deps={t.get('dependencies', [])}")
+        print("拓扑顺序:")
+        for name in topo_order(tasks):
+            print(f"  {name}")
     except ValueError as e:
         print(f"错误: {e}", file=sys.stderr)
         sys.exit(1)
