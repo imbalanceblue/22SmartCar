@@ -198,7 +198,9 @@ def run(tasks, timeout, seed):
     }
 
 
-if __name__ == "__main__":
+
+def main():
+    """入口:解析参数 → 加载配置 → 调度 → 写报告"""
     parser = argparse.ArgumentParser(description="M0-4 任务调度模拟器")
     parser.add_argument("--config", required=True, help="配置文件路径 (.yaml/.json)")
     parser.add_argument("--timeout", type=float, default=None, help="覆盖配置中的超时秒数")
@@ -206,12 +208,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=None, help="随机种子(复现用)")
     args = parser.parse_args()
 
-    try:
-        cfg_timeout, tasks = load_config(args.config)
-    except ValueError as e:
-        print(f"错误: {e}", file=sys.stderr)
-        sys.exit(1)
-
+    cfg_timeout, tasks = load_config(args.config)
     if args.timeout is not None:
         cfg_timeout = args.timeout          # 命令行覆盖配置文件
 
@@ -220,3 +217,18 @@ if __name__ == "__main__":
     with open(args.report, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"\n报告已写入 {args.report}  总耗时 {report['total_duration']}s")
+    return report
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except ValueError as e:
+        print(f"错误: {e}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"配置 JSON 语法错误: {e}", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"配置 YAML 语法错误: {e}", file=sys.stderr)
+        sys.exit(1)

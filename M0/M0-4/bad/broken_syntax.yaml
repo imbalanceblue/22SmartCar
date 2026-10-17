@@ -1,0 +1,3 @@
+tasks:
+  - name: A
+    duration 1
