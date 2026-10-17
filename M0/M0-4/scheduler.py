@@ -123,6 +123,15 @@ def topo_order(tasks):
 
     return order
 
+def log(status, text):
+    if sys.stdout.isatty():
+        colors = {"SUCCESS": "\033[92m", "FAILED": "\033[91m",
+                  "RETRY": "\033[93m", "SKIPPED": "\033[94m",
+                  "TIMEOUT": "\033[95m"}
+        print(f"{colors.get(status, '')}[{status}]\033[0m {text}")
+    else:
+        print(f"[{status}] {text}")
+
 
 def run(tasks, timeout, seed):
     """执行所有任务,返回报告字典"""
@@ -147,37 +156,37 @@ def run(tasks, timeout, seed):
         if any(status.get(d) != "SUCCESS" for d in deps):
             status[name] = "SKIPPED"
             attempts[name] = 0
-            print(f"[SKIPPED] {name} (前置未成功)")
+            log("SKIPPED", f"{name} (前置未成功)")
             continue
 
         # ② 执行前查超时
         if timed_out():
             status[name] = "TIMEOUT"
             attempts[name] = 0
-            print(f"[TIMEOUT] {name} (总耗时 {elapsed():.1f}s 已到上限)")
+            log("TIMEOUT", f"{name} (总耗时 {elapsed():.1f}s 已到上限)")
             continue
 
         # ③ 最多尝试 3 次
         ok = False
         for attempt in range(1, 4):
             attempts[name] = attempt
-            print(f"[RUN     ] {name} 第 {attempt} 次尝试")
+            log("RUN", f"{name} 第 {attempt} 次尝试")
             time.sleep(t["duration"])
             # 睡醒后再查一次超时(题目点名要求"执行前后各查一次")
             if timed_out():
                 status[name] = "TIMEOUT"
-                print(f"[TIMEOUT] {name} (睡眠期间总耗时到达上限)")
+                log("TIMEOUT", f"{name} (睡眠期间总耗时到达上限)")
                 break
 
             if random.random() < t["success_rate"]:
                 ok = True
                 break
             if attempt < 3:
-                print(f"[RETRY   ] {name} 第 {attempt} 次失败,重试")
-
+                log("RETRY", f"{name} 第 {attempt} 次失败,重试")
         # ④ 落最终状态
         if status.get(name) != "TIMEOUT":      # 别覆盖 TIMEOUT
             status[name] = "SUCCESS" if ok else "FAILED"
+        log(status[name], f"{name} (尝试 {attempts.get(name, 0)} 次,耗时 {t['duration']}s)")
 
     return {
         "timeout_occurred": any(s == "TIMEOUT" for s in status.values()),
@@ -187,8 +196,6 @@ def run(tasks, timeout, seed):
             for n in by_name           # 按配置顺序输出,保证每个任务都在
         ],
     }
-
-
 
 
 if __name__ == "__main__":
