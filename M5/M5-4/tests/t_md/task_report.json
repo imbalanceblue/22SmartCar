@@ -1,0 +1,1 @@
+{"mission_id": "t_md", "final": "FAILED", "tasks": {"nav": {"type": "M", "status": "FAILED", "attempts": 2, "retries": 1, "duration": 12.5, "fallback": null}, "grasp": {"type": "M", "status": "FAILED", "attempts": 1, "retries": 0, "duration": 8.0, "fallback": "nav"}}, "fallback_used": {"grasp": "nav"}, "final_context": {}}

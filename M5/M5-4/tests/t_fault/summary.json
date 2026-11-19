@@ -1,0 +1,42 @@
+{
+  "run": "t_fault",
+  "reviewed_at": "2026-11-19T21:34:05+08:00",
+  "mission_id": "t_fault",
+  "final": "FAILED",
+  "total_s": 20.5,
+  "tasks": {
+    "nav": {
+      "status": "FAILED",
+      "attempts": 2,
+      "retries": 1,
+      "duration": 12.5,
+      "fallback": null
+    },
+    "grasp": {
+      "status": "FAILED",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.0,
+      "fallback": "nav"
+    }
+  },
+  "metrics": {
+    "perception_freq": 6.4,
+    "confidence": 0.73,
+    "cpu_peak": 51.0,
+    "battery_min": 10.9
+  },
+  "faults": [
+    {
+      "type": "camera_degraded",
+      "ts": 2000,
+      "detail": "freq<10Hz"
+    }
+  ],
+  "root_causes": [
+    "camera_degraded@08:00:02 (freq<10Hz) -> nav fallback to lidar_only (+9.2s)",
+    "grasp failed -> fallback to nav (+8.0s)"
+  ],
+  "estop_count": 0,
+  "switch_changes": []
+}

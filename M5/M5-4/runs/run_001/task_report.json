@@ -1,0 +1,57 @@
+{
+  "mission_id": "exp_run_001_1",
+  "final": "SUCCESS",
+  "tasks": {
+    "navigate_to_scan": {
+      "type": "Mock",
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 10.39,
+      "fallback": null
+    },
+    "detect_qr": {
+      "type": "Mock",
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.65,
+      "fallback": null
+    },
+    "navigate_to_grasp": {
+      "type": "Mock",
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 14.43,
+      "fallback": null
+    },
+    "grasp": {
+      "type": "Mock",
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.65,
+      "fallback": null
+    },
+    "navigate_to_place": {
+      "type": "Mock",
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 11.54,
+      "fallback": null
+    },
+    "speak_done": {
+      "type": "Mock",
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 4.04,
+      "fallback": null
+    }
+  },
+  "fallback_used": {},
+  "retry_budget_left": 3,
+  "final_context": {}
+}

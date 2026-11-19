@@ -1,0 +1,133 @@
+{
+  "run": "run_004",
+  "reviewed_at": "2026-11-19T21:37:30+08:00",
+  "mission_id": "exp_run_004_1",
+  "final": "FAILED",
+  "total_s": 45.88,
+  "tasks": {
+    "navigate_to_scan": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.26,
+      "fallback": null
+    },
+    "detect_qr": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 6.88,
+      "fallback": null
+    },
+    "navigate_to_grasp": {
+      "status": "FAILED",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 11.47,
+      "fallback": null
+    },
+    "grasp": {
+      "status": "FAILED",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 6.88,
+      "fallback": null
+    },
+    "navigate_to_place": {
+      "status": "FAILED",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 9.18,
+      "fallback": "navigate_to_grasp"
+    },
+    "speak_done": {
+      "status": "FAILED",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 3.21,
+      "fallback": null
+    }
+  },
+  "metrics": {
+    "perception_freq": 1.86,
+    "confidence": 0.729,
+    "cpu_peak": 49.1,
+    "temp_peak": 46.0,
+    "battery_min": 10.9,
+    "nav_success_rate": 0.0
+  },
+  "faults": [
+    {
+      "type": "camera_degraded",
+      "ts": 1795095047140,
+      "detail": "freq<10Hz"
+    }
+  ],
+  "root_causes": [
+    "camera_degraded@21:30:47 (freq<10Hz) -> nav fallback to lidar_only (+9.2s)",
+    "navigate_to_place failed -> fallback to navigate_to_grasp (+9.18s)"
+  ],
+  "estop_count": 1,
+  "switch_changes": [
+    {
+      "ts": "2026-11-19T21:31:27.842+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "1.0"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.842+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "10.0"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.842+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.7"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.842+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "yolov8n_fp32"
+    }
+  ],
+  "compare_with_prev": {
+    "metrics": {
+      "confidence": {
+        "prev": 0.864,
+        "cur": 0.729,
+        "delta": -0.135
+      },
+      "cpu_peak": {
+        "prev": 49.2,
+        "cur": 49.1,
+        "delta": -0.1
+      },
+      "nav_success_rate": {
+        "prev": 1.0,
+        "cur": 0.0,
+        "delta": -1.0
+      },
+      "perception_freq": {
+        "prev": 9.3,
+        "cur": 1.86,
+        "delta": -7.44
+      }
+    },
+    "new_faults": [
+      "camera_degraded"
+    ],
+    "gone_faults": [],
+    "switch_changes": [
+      {
+        "type": "param",
+        "old": "?",
+        "new": "1.0"
+      }
+    ],
+    "time_delta_s": -3.72
+  }
+}

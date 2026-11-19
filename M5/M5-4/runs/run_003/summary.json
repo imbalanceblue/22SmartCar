@@ -1,0 +1,112 @@
+{
+  "run": "run_003",
+  "reviewed_at": "2026-11-19T21:31:27+08:00",
+  "mission_id": "exp_run_003_1",
+  "final": "SUCCESS",
+  "total_s": 49.6,
+  "tasks": {
+    "navigate_to_scan": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.93,
+      "fallback": null
+    },
+    "detect_qr": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 7.44,
+      "fallback": null
+    },
+    "navigate_to_grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 12.4,
+      "fallback": null
+    },
+    "grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 7.44,
+      "fallback": null
+    },
+    "navigate_to_place": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 9.92,
+      "fallback": null
+    },
+    "speak_done": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 3.47,
+      "fallback": null
+    }
+  },
+  "metrics": {
+    "perception_freq": 9.3,
+    "confidence": 0.864,
+    "cpu_peak": 49.2,
+    "temp_peak": 46.0,
+    "battery_min": 10.9,
+    "nav_success_rate": 1.0
+  },
+  "faults": [],
+  "root_causes": [],
+  "estop_count": 0,
+  "switch_changes": [
+    {
+      "ts": "2026-11-19T21:31:27.760+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.9"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.760+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "10.0"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.760+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.7"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.760+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "yolov8n_fp32"
+    }
+  ],
+  "compare_with_prev": {
+    "metrics": {
+      "confidence": {
+        "prev": 0.885,
+        "cur": 0.864,
+        "delta": -0.021
+      },
+      "cpu_peak": {
+        "prev": 48.5,
+        "cur": 49.2,
+        "delta": 0.7
+      }
+    },
+    "new_faults": [],
+    "gone_faults": [],
+    "switch_changes": [
+      {
+        "type": "param",
+        "old": "?",
+        "new": "0.9"
+      }
+    ],
+    "time_delta_s": -7.3
+  }
+}

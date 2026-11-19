@@ -1,0 +1,10 @@
+{
+  "params": {
+    "nav_speed": 0.8,
+    "perception_hz": 12.0,
+    "conf_threshold": 0.7,
+    "model": "yolov8n_int8"
+  },
+  "base": "scene_race.yaml",
+  "exp": "model_int8_test"
+}
