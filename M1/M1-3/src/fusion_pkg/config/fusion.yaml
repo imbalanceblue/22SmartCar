@@ -1,0 +1,22 @@
+# M1-3 参数集中管理
+#
+# 注意:激光/相机的外参(xyz + 四元数)不在这里,而在
+#   fusion_pkg/geometry.py 的 LASER_IN_BASE / CAMERA_IN_BASE / CAMERA_QUAT
+# 原因:外参同时被 static_tf(发布)、baggen(生成)、projector(校验)三处使用,
+# 放在代码里能保证只有一个真值来源;放进 YAML 反而会出现"三份拷贝不一致"。
+# 这里的参数都是"跑起来之后可以调"的量。
+
+/projector:
+  ros__parameters:
+    output_dir: ~/fusion_out    # 投影结果 PNG 保存目录(节点内会展开 ~)
+    save_interval: 1.5          # 每 1.5 秒(按消息时间戳)存一张
+    max_saves: 3                # 最多存 3 张,避免刷满磁盘
+
+    # 相机内参,必须与 baggen 生成图像时用的完全一致,否则点会整体偏移
+    fx: 400.0
+    fy: 400.0
+    cx: 320.0
+    cy: 240.0
+
+    sync_slop: 0.05             # 近似时间同步容差(秒)
+    range_max_color: 6.0        # 着色标尺上限:6m 以外全蓝,配合 5.0~1.4m 的行程使渐变可见
