@@ -1,0 +1,3 @@
+task_report.json
+.pytest_cache/
+__pycache__/
