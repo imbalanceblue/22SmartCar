@@ -1,0 +1,5 @@
+__pycache__/
+.pytest_cache/
+dist/
+*.pyc
+runs/**/review_*.md
