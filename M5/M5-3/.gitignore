@@ -1,0 +1,6 @@
+task_report.json
+.pytest_cache/
+__pycache__/
+audit_log_*.jsonl
+switch_log.csv
+blackbox.jsonl
