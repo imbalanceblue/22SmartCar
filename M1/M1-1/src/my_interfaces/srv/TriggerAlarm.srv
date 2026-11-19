@@ -1,0 +1,7 @@
+# M1-1 自定义服务:触发报警
+# 请求:报警原因    响应:是否成功 + 说明
+
+string reason
+---
+bool success
+string message
