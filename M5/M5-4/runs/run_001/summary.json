@@ -1,0 +1,88 @@
+{
+  "run": "run_001",
+  "reviewed_at": "2026-11-19T21:31:27+08:00",
+  "mission_id": "exp_run_001_1",
+  "final": "SUCCESS",
+  "total_s": 57.7,
+  "tasks": {
+    "navigate_to_scan": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 10.39,
+      "fallback": null
+    },
+    "detect_qr": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.65,
+      "fallback": null
+    },
+    "navigate_to_grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 14.43,
+      "fallback": null
+    },
+    "grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.65,
+      "fallback": null
+    },
+    "navigate_to_place": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 11.54,
+      "fallback": null
+    },
+    "speak_done": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 4.04,
+      "fallback": null
+    }
+  },
+  "metrics": {
+    "perception_freq": 10.0,
+    "confidence": 0.851,
+    "cpu_peak": 43.5,
+    "temp_peak": 46.0,
+    "battery_min": 10.9,
+    "nav_success_rate": 1.0
+  },
+  "faults": [],
+  "root_causes": [],
+  "estop_count": 0,
+  "switch_changes": [
+    {
+      "ts": "2026-11-19T21:31:27.657+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.8"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.657+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "10.0"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.657+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.7"
+    },
+    {
+      "ts": "2026-11-19T21:31:27.657+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "yolov8n_fp32"
+    }
+  ]
+}

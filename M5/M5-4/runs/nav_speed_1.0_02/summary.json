@@ -1,0 +1,70 @@
+{
+  "run": "nav_speed_1.0_02",
+  "reviewed_at": "2026-11-19T21:31:29+08:00",
+  "mission_id": "exp_nav_speed_1.0_2",
+  "final": "SUCCESS",
+  "total_s": 40.6,
+  "tasks": {
+    "navigate_to_scan": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 7.31,
+      "fallback": null
+    },
+    "detect_qr": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 6.09,
+      "fallback": null
+    },
+    "navigate_to_grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 10.15,
+      "fallback": null
+    },
+    "grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 6.09,
+      "fallback": null
+    },
+    "navigate_to_place": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.12,
+      "fallback": null
+    },
+    "speak_done": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 2.84,
+      "fallback": null
+    }
+  },
+  "metrics": {
+    "perception_freq": 9.6,
+    "confidence": 0.838,
+    "cpu_peak": 52.9,
+    "temp_peak": 46.0,
+    "battery_min": 10.9,
+    "nav_success_rate": 1.0
+  },
+  "faults": [],
+  "root_causes": [],
+  "estop_count": 0,
+  "switch_changes": [
+    {
+      "ts": "2026-11-19T21:31:29.447+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "1.0"
+    }
+  ]
+}
