@@ -1,0 +1,25 @@
+mission_id: parallel_demo
+tasks:
+  - name: wait_start
+    type: WaitForTrigger
+    duration: 0.1
+
+  # 并发分支:巡线 与 避障 同时进行,全部成功才算成功
+  - name: cruise_and_avoid
+    type: Parallel
+    timeout: 10
+    branches:
+      - name: follow_line
+        type: NavigateTo
+        pose: [2.0, 1.0, 0.0]
+        duration: 0.3
+      - name: avoid_obstacle
+        type: DetectTarget
+        target_class: "obstacle"
+        min_confidence: 0.5
+        duration: 0.5
+
+  - name: speak_done
+    type: SpeakTTS
+    text: "巡线避障完成"
+    duration: 0.1
