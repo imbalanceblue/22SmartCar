@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>M5-2 车队仪表盘</title>
+<style>
+  :root { --bg:#11151c; --panel:#1a212b; --line:#2a3442; --txt:#e6edf3; --dim:#8b98a9; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--txt); font:14px/1.5 "Segoe UI",monospace; }
+  header { display:flex; align-items:center; gap:16px; padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; color:var(--dim); margin-right:8px; }
+  .lamp { width:22px; height:22px; border-radius:50%; background:#c62828; transition:background .2s; }
+  .lamp.on { background:#2e7d32; box-shadow:0 0 10px #2e7d32; }
+  button { background:#243040; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
+  button:hover { background:#2f3f55; }
+  button.estop { background:#c62828; border-color:#e57373; font-weight:bold; font-size:15px; padding:8px 20px; }
+  button.estop:hover { background:#e53935; }
+  .grid { display:grid; grid-template-columns: 300px 1fr 300px; gap:10px; padding:10px; height:calc(100vh - 46px); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; overflow:auto; }
+  .panel h2 { font-size:13px; color:var(--dim); margin-bottom:8px; text-transform:uppercase; }
+  .col-mid { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .node { display:flex; align-items:center; gap:8px; padding:6px 8px; margin-bottom:6px; border:1px solid var(--line); border-radius:6px; }
+  .dot { width:12px; height:12px; border-radius:50%; flex:none; }
+  .node .name { font-size:13px; }
+  .node .st { margin-left:auto; font-size:12px; color:var(--dim); }
+  .node.fallback { border-color:#ef6c00; }
+  canvas { width:100%; height:150px; background:#0d1117; border-radius:6px; }
+  .fault { padding:5px 8px; margin-bottom:4px; border-radius:5px; font-size:12px; }
+  .fault.active { background:#3e1f1f; border:1px solid #c62828; }
+  .fault.healed { background:#1e2c1e; border:1px solid #388e3c; color:#a5d6a7; }
+  .kv { display:flex; justify-content:space-between; padding:3px 0; font-size:13px; }
+  .kv b { font-weight:normal; color:var(--dim); }
+  #countdown { font-size:34px; text-align:center; font-weight:bold; letter-spacing:2px; }
+  #stage { text-align:center; color:var(--dim); }
+  .metrics-mini { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+  .m { background:#0d1117; border-radius:6px; padding:6px 8px; text-align:center; }
+  .m .v { font-size:16px; }
+  .m .l { font-size:11px; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>M5-2 DASHBOARD</h1>
+  <div class="lamp" id="lamp"></div><span id="readyTxt">未就绪</span>
+  <button onclick="api('/api/referee/start')">▶ 发车</button>
+  <button onclick="api('/api/referee/pause')">⏸ 暂停</button>
+  <button onclick="api('/api/referee/resume')">⏵ 继续</button>
+  <button onclick="api('/api/fault/camera_off')">📷 拔相机</button>
+  <button onclick="api('/api/fault/npu_overheat')">🔥 NPU过热</button>
+  <button onclick="api('/api/fault/low_battery')">🔋 低电量</button>
+  <button onclick="api('/api/reset')">↺ 软复位</button>
+  <button onclick="window.open('/api/export')">💾 导出快照</button>
+  <button class="estop" onclick="api('/api/estop')">⬤ 急停</button>
+</header>
+
+<div class="grid">
+  <div class="panel"><h2>任务状态机</h2><div id="nodes"></div>
+    <div id="fbUsed" style="font-size:12px;color:#ef6c00;margin-top:6px"></div></div>
+
+  <div class="col-mid">
+    <div class="panel"><h2>感知指标(频率 Hz / 置信度 ×10)</h2><canvas id="chart1"></canvas></div>
+    <div class="panel"><h2>系统(电量 V / CPU % / 温度 ℃)</h2><canvas id="chart2"></canvas></div>
+    <div class="panel"><h2>故障标签流</h2><div id="faults"></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>裁判系统</h2>
+    <div id="countdown">--</div><div id="stage">待发车</div>
+    <div class="kv" style="margin-top:8px"><b>状态</b><span id="refState">READY</span></div>
+    <div class="kv"><b>犯规次数</b><span id="refFouls">0</span></div>
+    <h2 style="margin-top:14px">系统资源</h2>
+    <div class="metrics-mini">
+      <div class="m"><div class="v" id="mBat">--</div><div class="l">电压 V</div></div>
+      <div class="m"><div class="v" id="mCpu">--</div><div class="l">CPU %</div></div>
+      <div class="m"><div class="v" id="mTemp">--</div><div class="l">温度 ℃</div></div>
+      <div class="m"><div class="v" id="mLoss">--</div><div class="l">感知丢包</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = { IDLE:'#6b7280', RUNNING:'#2e7d32', RETRYING:'#f9a825',
+                 SUCCESS:'#1565c0', FAILED:'#c62828', SKIPPED:'#4b5563',
+                 TIMEOUT:'#e65100' };
+const MAXPTS = 180;
+const hist = { freq:[], conf:[], bat:[], cpu:[], temp:[] };
+let nodeOrder = [];
+
+function api(p){ fetch(p, {method:'POST'}); }
+
+function draw(id, series, lo, hi){
+  const c = document.getElementById(id), g = c.getContext('2d');
+  const W = c.width = c.clientWidth, H = c.height = c.clientHeight;
+  g.clearRect(0,0,W,H);
+  g.strokeStyle = '#2a3442'; g.beginPath();
+  for(let i=1;i<4;i++){ g.moveTo(0,H*i/4); g.lineTo(W,H*i/4); } g.stroke();
+  for(const s of series){
+    g.strokeStyle = s.color; g.lineWidth = 1.8; g.beginPath();
+    const n = s.data.length;
+    for(let i=0;i<n;i++){
+      const x = n<=1 ? W : W*(1-(n-1-i)/(MAXPTS-1));
+      const y = H - (s.data[i]-lo)/(hi-lo)*H;
+      i===0 ? g.moveTo(x,y) : g.lineTo(x,y);
+    }
+    g.stroke();
+  }
+}
+
+function push(arr, v){ arr.push(v); if(arr.length>MAXPTS) arr.shift(); }
+
+function update(s){
+  // 顶栏
+  document.getElementById('lamp').classList.toggle('on', s.system_ready);
+  document.getElementById('readyTxt').textContent = s.system_ready ? '系统就绪' : '未就绪';
+  // 指标
+  const m = s.metrics, per = m.topics['/perception/targets'];
+  push(hist.freq, per ? per.freq : 0);
+  push(hist.conf, per && per.confidence ? per.confidence*10 : 0);
+  push(hist.bat, m.battery); push(hist.cpu, m.cpu); push(hist.temp, m.temp);
+  draw('chart1', [{data:hist.freq,color:'#4fc3f7'},{data:hist.conf,color:'#ffb74d'}], 0, 12);
+  draw('chart2', [{data:hist.bat,color:'#81c784'},{data:hist.cpu,color:'#e57373'},{data:hist.temp,color:'#ffd54f'}], 0, 100);
+  document.getElementById('mBat').textContent = m.battery;
+  document.getElementById('mCpu').textContent = m.cpu;
+  document.getElementById('mTemp').textContent = m.temp;
+  document.getElementById('mLoss').textContent = per ? Math.round(per.loss*100)+'%' : '--';
+  // 状态机
+  const ts = s.task_state || {}, nodes = ts.nodes || {};
+  for(const k of Object.keys(nodes)) if(!nodeOrder.includes(k)) nodeOrder.push(k);
+  const fb = ts.fallback_used ? Object.keys(ts.fallback_used) : [];
+  document.getElementById('nodes').innerHTML = nodeOrder.map(n =>
+    `<div class="node${fb.includes(n)?' fallback':''}">
+       <div class="dot" style="background:${COLORS[nodes[n]]||COLORS.IDLE}"></div>
+       <span class="name">${n}</span><span class="st">${nodes[n]||'IDLE'}</span>
+     </div>`).join('');
+  document.getElementById('fbUsed').textContent =
+    fb.length ? '⚠ 降级发生过: ' + fb.map(f=>`${f} → ${ts.fallback_used[f]}`).join(', ') : '';
+  // 故障流
+  document.getElementById('faults').innerHTML = (s.event_log||[]).slice().reverse().map(e =>
+    `<div class="fault ${e.event==='FAULT'?'active':'healed'}">
+       [t=${e.t}] ${e.event==='FAULT'?'🔴':'🟢'} ${e.type}
+       ${e.event==='HEALED' ? ' (持续 '+e.duration+'s, 已自愈)' : ''}
+     </div>`).join('') || '<div style="color:#8b98a9">暂无故障</div>';
+  // 裁判
+  const r = s.referee || {};
+  document.getElementById('countdown').textContent =
+    r.state==='RUNNING'||r.state==='PAUSED' ? Math.ceil(r.countdown)+'s' : '--';
+  document.getElementById('stage').textContent = r.stage || '';
+  document.getElementById('refState').textContent = r.state || 'READY';
+  document.getElementById('refFouls').textContent = r.fouls ?? 0;
+}
+
+const es = new EventSource('/api/stream');
+es.onmessage = ev => update(JSON.parse(ev.data));
+es.onerror = () => { es.close(); setTimeout(()=>location.reload(), 2000); };
+</script>
+</body>
+</html>
