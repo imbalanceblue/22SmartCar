@@ -1,0 +1,19 @@
+# 最小可跑示例:没有并发、没有降级,用来快速确认框架能起来。
+# 运行:python run_task.py tasks/task_simple.yaml
+mission_id: simple_demo
+
+tasks:
+  - name: wait_start
+    type: WaitForTrigger
+    timeout: 30
+    duration: 0.1
+
+  - name: go_there
+    type: NavigateTo
+    pose: [1.0, 0.0, 0.0]
+    duration: 0.2
+
+  - name: say_done
+    type: SpeakTTS
+    text: "到达"
+    duration: 0.1
