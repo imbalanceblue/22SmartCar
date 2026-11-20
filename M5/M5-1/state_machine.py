@@ -1,8 +1,4 @@
-"""M5-1 任务状态机核心框架。
-
-设计思想:分权 —— 节点管执行(只报告单次结果),
-状态机管调度(重试/超时/降级/跳过),TaskContext 管传数据。
-"""
+"""M5-1 任务状态机核心:节点管执行,状态机管调度,TaskContext 管传数据。"""
 import json
 import sys
 import time
@@ -12,34 +8,24 @@ from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 
 # ---------- 状态常量 ----------
-IDLE = "IDLE"
-RUNNING = "RUNNING"
-RETRYING = "RETRYING"
-SUCCESS = "SUCCESS"
-FAILED = "FAILED"
-SKIPPED = "SKIPPED"
-TIMEOUT = "TIMEOUT"
+IDLE, RUNNING, RETRYING = "IDLE", "RUNNING", "RETRYING"
+SUCCESS, FAILED, SKIPPED, TIMEOUT = "SUCCESS", "FAILED", "SKIPPED", "TIMEOUT"
 
-_COLORS = {
-    "INFO": "\033[95m", "RUNNING": "\033[96m", "RETRYING": "\033[94m",
-    "SUCCESS": "\033[92m", "FAILED": "\033[91m", "TIMEOUT": "\033[93m",
-    "SKIPPED": "\033[90m",
-}
+_COLORS = {"INFO": "\033[95m", "RUNNING": "\033[96m", "RETRYING": "\033[94m",
+           "SUCCESS": "\033[92m", "FAILED": "\033[91m", "TIMEOUT": "\033[93m",
+           "SKIPPED": "\033[90m"}
 _RESET = "\033[0m"
 
 
 def log(tag, msg):
     """彩色日志;非终端(重定向/CI)时退化为纯文本。"""
     line = f"[{tag:>8}] {msg}"
-    if sys.stdout.isatty():
-        print(f"{_COLORS.get(tag, '')}{line}{_RESET}")
-    else:
-        print(line)
+    print(f"{_COLORS.get(tag, '')}{line}{_RESET}" if sys.stdout.isatty() else line)
 
 
 @dataclass
 class TaskContext:
-    """任务上下文:一次任务全程共享的"黑板"。"""
+    """任务上下文:一次任务全程共享的黑板。"""
     mission_id: str = "mission"
     deadline: float | None = None        # 截止时刻(time.monotonic 基准)
     shared: dict = field(default_factory=dict)      # 共享数据字典
@@ -49,21 +35,14 @@ class TaskContext:
 
 
 class TaskNode(ABC):
-    """任务节点基类。
-
-    子类只实现 execute():执行一次,返回 SUCCESS 或 FAILED。
-    重试、超时、降级是状态机的决策,不归节点管 —— 这就是"分权"。
-    """
+    """节点基类:子类只实现 execute();重试/超时/降级归状态机(分权)。"""
 
     def __init__(self, name, *, timeout=None, retry=0, retry_interval=0.5,
                  fallback=None, fail_times=0, duration=0.0):
-        self.name = name
-        self.timeout = timeout          # 单次执行超时(秒,None=不限)
-        self.retry = retry              # 失败后重试次数
-        self.retry_interval = retry_interval
+        self.name, self.timeout = name, timeout         # 单次执行超时,None=不限
+        self.retry, self.retry_interval = retry, retry_interval
         self.fallback = fallback        # 降级目标节点名
-        self.fail_times = fail_times    # mock:前 N 次故意失败
-        self.duration = duration        # mock:模拟执行耗时(秒)
+        self.fail_times, self.duration = fail_times, duration   # mock 专用
         self.attempts = 0               # 已执行次数(含重试)
 
     @abstractmethod
@@ -74,19 +53,13 @@ class TaskNode(ABC):
         """mock 公共逻辑:计时 + 前 N 次故意失败。"""
         self.attempts += 1
         time.sleep(self.duration)
-        if self.attempts <= self.fail_times:
-            return FAILED
-        return SUCCESS
+        return FAILED if self.attempts <= self.fail_times else SUCCESS
 
     def run_in_thread(self, ctx: TaskContext) -> str:
-        """在子线程执行并强制超时。
-
-        注:超时后子线程无法强杀,只能不再等它(mock 场景可接受)。
-        """
+        """子线程执行并强制超时(超时后无法强杀,只能不再等它)。"""
         pool = ThreadPoolExecutor(max_workers=1)
         try:
-            future = pool.submit(self.execute, ctx)
-            return future.result(timeout=self.timeout)
+            return pool.submit(self.execute, ctx).result(timeout=self.timeout)
         except FutureTimeout:
             return TIMEOUT
         finally:
@@ -94,23 +67,14 @@ class TaskNode(ABC):
 
 
 class Parallel(TaskNode):
-    """并发分支节点:所有子节点成功才算成功。
-
-    失败策略(设计决策,已写入 README):等全部分支跑完再汇总,
-    任一分支 FAILED/TIMEOUT 则整体 FAILED,不半途取消其余分支。
-    """
+    """并发分支:全部成功才算成功(wait-all,不半途取消其余分支)。
+    超时分层:分支归 run_in_thread,整体归 StateMachine 外层,本层不重复设防。"""
 
     def __init__(self, name, branches, **kwargs):
         super().__init__(name, **kwargs)
         self.branches = branches        # list[TaskNode]
 
     def execute(self, ctx: TaskContext) -> str:
-        """并发执行所有分支并等全部结束。
-
-        超时分层:每个分支的 timeout 由它自己的 run_in_thread 负责;
-        Parallel 节点整体的 timeout 由 StateMachine 的外层包装负责。
-        这里不再额外套一层超时(否则会与外层产生竞争)。
-        """
         results = {}
         with ThreadPoolExecutor(max_workers=len(self.branches)) as pool:
             futures = {b.name: pool.submit(b.run_in_thread, ctx)
@@ -119,9 +83,7 @@ class Parallel(TaskNode):
                 results[name] = future.result()
         for name, status in results.items():
             log("INFO", f"  [{self.name}] 分支 {name} -> {status}")
-        if all(v == SUCCESS for v in results.values()):
-            return SUCCESS
-        return FAILED
+        return SUCCESS if all(v == SUCCESS for v in results.values()) else FAILED
 
 
 class StateMachine:
@@ -158,7 +120,6 @@ class StateMachine:
         rec.update(kwargs)
 
     def _execute_once(self, node):
-        """执行一次并计时。"""
         start = time.monotonic()
         status = node.run_in_thread(self.ctx)
         self._record(node, duration=round(time.monotonic() - start, 3))
@@ -166,7 +127,7 @@ class StateMachine:
 
     def _run_with_retry(self, node):
         """带重试的执行。超时不重试(直接交由降级),失败按次数重试。"""
-        retries = 0                    # 本轮真实发生的重试次数
+        retries = 0                     # 本轮真实发生的重试次数
         for attempt in range(1, node.retry + 2):
             self._record(node, status=RUNNING)
             log("RUNNING", f"{node.name} 第 {attempt} 次尝试")
@@ -190,7 +151,7 @@ class StateMachine:
     def run(self):
         log("INFO", f"任务 {self.ctx.mission_id} 开始,共 {len(self.nodes)} 个节点")
         final = SUCCESS
-        for idx, node in enumerate(self.nodes):
+        for node in self.nodes:
             if final != SUCCESS:
                 self._record(node, status=SKIPPED)
                 log("SKIPPED", f"{node.name} 因上游失败被跳过")
@@ -209,31 +170,25 @@ class StateMachine:
                 continue
             if node.fallback:           # 降级:跑指定节点,成功则继续主流程
                 log("INFO", f"{node.name} 失败({status}),降级到 {node.fallback}")
-                fb = self._by_name(node.fallback)
-                fb_status = self._run_with_retry(fb)
+                fb_status = self._run_with_retry(self._by_name(node.fallback))
                 if fb_status == SUCCESS:
                     self.ctx.fallback_used[node.name] = node.fallback
-                    self._executed_via_fallback.add(fb.name)
+                    self._executed_via_fallback.add(node.fallback)
                     self._record(node, status=FAILED, fallback=node.fallback)
                     log("SUCCESS", f"降级 {node.fallback} 成功,继续主流程")
                     continue
             self._record(node, status=FAILED)
             log("FAILED", f"{node.name} 最终失败")
             final = FAILED
-        log("INFO" if final == SUCCESS else "FAILED",
-            f"任务结束: {final}")
+        log("INFO" if final == SUCCESS else "FAILED", f"任务结束: {final}")
         self.final = final
         return final
 
     def report(self):
-        return {
-            "mission_id": self.ctx.mission_id,
-            "final": self.final,
-            "tasks": self.records,
-            "fallback_used": self.ctx.fallback_used,
-            "retry_budget_left": self.ctx.retry_budget,
-            "final_context": self.ctx.shared,
-        }
+        return {"mission_id": self.ctx.mission_id, "final": self.final,
+                "tasks": self.records, "fallback_used": self.ctx.fallback_used,
+                "retry_budget_left": self.ctx.retry_budget,
+                "final_context": self.ctx.shared}
 
     def save_report(self, path):
         with open(path, "w", encoding="utf-8") as f:
