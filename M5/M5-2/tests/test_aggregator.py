@@ -6,9 +6,11 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_ROOT, "robot_side"))
+sys.path.insert(0, os.path.join(_ROOT, "host_side"))
 
-from aggregator import Aggregator
+from dashboard_aggregator import Aggregator
 from mock_source import CarSim
 
 # ---------- 指标计算 ----------

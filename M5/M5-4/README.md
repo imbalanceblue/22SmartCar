@@ -26,9 +26,9 @@ python3 scripts/exp.py compare --names nav_speed_0.8,nav_speed_0.9,nav_speed_1.0
 python3 scripts/exp.py promote --name nav_speed_0.9 --to race
 ```
 
-- `new`:只存差异值(`config/scene_<name>.yaml`),元数据进 `experiments/registry.json`(基线/修改项/目的)
+- `new`:只存差异值(`config/scene_<name>.yaml`),元数据进 `config/experiments/registry.json`(基线/修改项/目的)
 - `run`:热加载参数(写 switch_log,含真实 ros2 命令)→ 跑 N 把 → 每把自动过 quick_review → 汇总均值/方差/成功率
-- `compare`:Markdown 表格 + 无 CDN 的 Canvas 交互图(`experiments/compare_latest.html`,现场断网可看)
+- `compare`:Markdown 表格 + 无 CDN 的 Canvas 交互图(`config/experiments/compare_latest.html`,现场断网可看)
 - `promote`:一键把最优实验写回基线场景,并生成含实验摘要的 git 提交(无 git 环境降级为打印命令)
 
 ### 3. `scripts/gen_baseline.py` — 最优基线包生成器
@@ -39,20 +39,32 @@ python3 scripts/gen_baseline.py --exp nav_speed_0.9
 
 产出 `dist/baseline_package_<日期>.tar.gz`:锁参数的 `baseline.yaml` + 模型文件(sha256 锁定)+ `verify_baseline.sh` + README。异机验证:解压 → `./verify_baseline.sh` → `PASS`。
 
-## 二、目录结构
+## 二、目录结构（与官方交付树一致）
 
 ```
 M5-4/
-├── scripts/          quick_review.py / exp.py / gen_baseline.py / make_demo_data.py
-├── config/           scene_race.yaml(+JSON 孪生)及各实验差异配置
-├── experiments/      registry.json 实验元数据、compare_latest.{md,html}
-├── runs/             练习日数据 run_001..005(5 把)+ 实验运行产物
-├── models/           2 个模型版本(占位文件,哈希锁定)
-├── dist/             生成的基线包(运行产物,不入库)
-└── tests/            9 个用例:复盘/实验全流程/基线包与阈值拦截
+├── scripts/
+│   ├── quick_review.py   # ★ 单次复盘（< 30s，实测 0.19s）
+│   ├── exp.py            # ★ 实验管理 new/run/compare/promote
+│   ├── gen_baseline.py   # ★ 基线包生成
+│   ├── parse_mcap.py     # ★ 关键话题提取（被 quick_review 复用）
+│   └── make_demo_data.py # 生成确定性练习日数据
+├── config/
+│   ├── scene_race.yaml   # 当前基线（+ JSON 孪生）
+│   ├── scene_*.json      # 各实验完整场景
+│   └── experiments/      # registry.json + compare_latest.{md,html} + 差异配置
+├── data/                 # 示例小样本（sample_run/，可复现）
+├── outputs/              # 复盘报告 / 对比图导出（运行产物）
+├── runs/                 # 练习日 run_001..005 + 实验运行产物（不入库）
+├── models/               # 3 个模型版本（占位文件，哈希锁定）
+├── docs/
+│   ├── review_fields.md  # 摘要各字段定义 + 时间对齐
+│   └── workflow.md       # 从跑完到 promote 的完整流程
+├── dist/                 # 生成的基线包（运行产物，不入库）
+└── tests/                # 9 个用例
 ```
 
-`scripts/make_demo_data.py` 一键生成确定性"练习日数据":5 把 blackbox(第 4 把相机故障走降级)、3 套实验参数、2 个模型版本。
+`scripts/make_demo_data.py` 一键生成确定性"练习日数据"：5 把 blackbox（第 4 把相机故障走降级）、3 套实验参数、2 个模型版本。
 
 ## 三、设计决策(答辩要点)
 
@@ -65,10 +77,11 @@ M5-4/
 
 ## 四、已知限制(如实披露)
 
-1. 真车黑匣子是 rosbag2 `.mcap`;本环境用同构 JSONL(M5-3 car_side 链路),解析逻辑等价,接真车时补 mcap 适配层。
+1. 真车黑匣子是 rosbag2 `.mcap`;本环境用同构 JSONL(M5-3 car_side 链路)。
+   读取分支已抽到 `scripts/parse_mcap.py`,装 `mcap` 库即可直接读真 bag,上层分析不用改。
 2. `run` 阶段的"真车跑一把"以确定性仿真代替(见设计决策 4)。
 3. 模型文件为占位文件(哈希锁定机制可用),真实部署替换为导出的 best.onnx。
-4. M5-1 调度内核当前 241 行,超出题面 200 行要求,计划全部任务完成后统一瘦身(压缩注释/空行,不减功能)。
+4. M5-1 调度内核已从 241 行压缩至 196 行(仅压注释/空行/合并赋值,逻辑零改动),满足题面 200 行要求。
 
 ## 五、快速验收
 

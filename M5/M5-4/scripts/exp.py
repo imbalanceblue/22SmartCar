@@ -10,7 +10,7 @@
 
 目录约定(相对 M5-4 根):
   config/scene_*.yaml|.json   场景配置(实验只存差异值)
-  experiments/registry.json   实验元数据(基线/修改项/目的/运行结果)
+  config/experiments/registry.json  实验元数据(基线/修改项/目的/运行结果)
   runs/<exp>_<i>/             每把产物(task_report/blackbox/switch_log/summary)
 
 注:真实环境 run 阶段会"热加载参数 -> 真车跑一把";本环境无真车,
@@ -33,7 +33,7 @@ sys.path.insert(0, HERE)
 import quick_review as qr                          # noqa: E402
 
 CONFIG_DIR = os.path.join(ROOT, "config")
-EXP_DIR = os.path.join(ROOT, "experiments")
+EXP_DIR = os.path.join(ROOT, "config", "experiments")
 RUNS_DIR = os.path.join(ROOT, "runs")
 REGISTRY = os.path.join(EXP_DIR, "registry.json")
 

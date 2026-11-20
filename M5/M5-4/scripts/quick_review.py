@@ -40,24 +40,12 @@ def load_task_report(run_dir):
 
 
 def load_blackbox(run_dir):
-    """黑匣子 JSONL。兼容 M5-3 的纯急停行(无 event 字段按 estop 处理)。"""
-    path = os.path.join(run_dir, "blackbox.jsonl")
-    rows = []
-    if not os.path.exists(path):
-        return rows
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except ValueError:
-                continue
-            row.setdefault("event", "estop" if row.get("topic") == "/cmd_vel"
-                           else "unknown")
-            rows.append(row)
-    return rows
+    """黑匣子关键记录:委托 parse_mcap 做白名单过滤。
+
+    白名单只维护在 scripts/parse_mcap.py 一处,避免两条路径口径走偏。
+    """
+    from parse_mcap import load_key_records
+    return load_key_records(run_dir)
 
 
 def load_switch_log(run_dir):

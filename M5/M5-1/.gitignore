@@ -1,3 +1,7 @@
-task_report.json
-.pytest_cache/
 __pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+task_report.json
+*.egg-info/
+.venv/

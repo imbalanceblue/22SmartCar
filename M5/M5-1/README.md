@@ -1,118 +1,152 @@
 # M5-1 任务状态机
 
-纯 Python 状态机,把比赛任务按顺序/并发/重试/超时/降级串起来。
-不依赖 BehaviorTree.CPP / Groot2 / ROS2,终端可跑、日志清晰、单测覆盖。
+纯 Python 状态机,把比赛任务按顺序 / 并发 / 重试 / 超时 / 降级串起来。
+不依赖 BehaviorTree.CPP、Groot2、py_trees,也不依赖 ROS2 运行时 ——
+终端可跑、日志带色、单测 29 个用例。
 
-## 文件结构
+## 目录结构
 
 ```
-M5/M5-1/
-├── state_machine.py    # 核心框架:TaskContext + TaskNode + Parallel + StateMachine
-├── mock_nodes.py       # 5 个 Mock 任务节点(继承 TaskNode)
-├── runner.py           # 入口:YAML/JSON DSL -> 节点实例 -> 运行 -> 报告
-├── mission.yaml        # 主编排文件(顺序 + 重试 + 降级)
-├── mission_parallel.yaml # 并发示例(Parallel)
-├── mock/ros2.py        # Mock ROS2 接口桩(Action/Service 形状)
-├── tests/test_nodes.py # pytest 单测(16 个用例)
+M5-1/
+├── task_fsm/               框架包
+│   ├── core.py             调度内核(199 行,< 200)
+│   ├── context.py          TaskContext
+│   ├── nodes.py            5 个标准节点(Mock)+ MockNode 基类
+│   ├── registry.py         type -> 节点类 的注册表 + 节点工厂
+│   └── logger.py           彩色日志
+├── run_task.py             入口:python run_task.py tasks/task_demo.yaml
+├── tasks/
+│   ├── task_demo.yaml      自带示例(含并发 / 重试 / 降级)
+│   ├── task_demo.json      等价 JSON 版(环境没装 pyyaml 时用)
+│   ├── task_simple.yaml    最小示例
+│   └── poses/              位姿片段(当前未启用外部文件,见 docs/dsl.md)
+├── tests/
+│   ├── test_nodes.py       16 个节点级用例
+│   └── test_fsm.py         13 个框架级用例
+├── docs/
+│   ├── design.md           设计说明(状态图 + 取舍)
+│   └── dsl.md              YAML 字段说明(考官按此写测试 YAML)
 └── README.md
 ```
-
-核心框架 `state_machine.py` 共 **196 行**(不含 Mock 节点与测试),满足题面 <200 行要求。
 
 ## 运行
 
 ```bash
 cd ~/22SmartCar/M5/M5-1
-python3 runner.py --config mission.yaml
-python3 runner.py --config mission_parallel.yaml
-python3 runner.py --config mission.yaml --deadline 60 --report out.json
-python3 -m pytest tests/ -v        # 单测
+
+# 一键运行(官方约定的入口形式)
+python3 run_task.py tasks/task_demo.yaml
+
+# 其余示例
+python3 run_task.py tasks/task_simple.yaml
+python3 run_task.py tasks/task_demo.json --deadline 60 --report out.json
+
+# 单测(不装 pytest 也能跑,两套都有自跑入口)
+pytest tests/ -q
+python3 tests/test_fsm.py
+python3 tests/test_nodes.py
 ```
 
-## 核心设计(答辩重点)
+输出:终端彩色日志 + `task_report.json`。
+退出码:`0` = 全部成功;非 0 = 失败 / 超时 / 中止。
 
-**分权架构**:M0-4 的调度器是"中央集权"(run 函数管一切);M5-1 分权为三块:
+## 核心设计
+
+**分权**:三类角色,边界不能破。
 
 | 角色 | 职责 | 不管什么 |
 | :-- | :-- | :-- |
-| `TaskNode` 子类 | 执行一次,返回 `SUCCESS`/`FAILED` | 重试、超时、降级 |
-| `StateMachine` | 调度:重试/超时/降级/连坐/预算 | 具体任务怎么干 |
-| `TaskContext` | 全程共享"黑板":传数据、记预算 | 任何决策 |
+| `TaskNode` 子类 | 执行一次,返回 `SUCCESS`/`FAILED`/`SKIPPED` | 重试、超时、降级 |
+| `StateMachine` | 重试 / 超时 / 降级 / 连坐 / 全局预算 | 具体任务怎么干 |
+| `TaskContext` | 共享黑板:传数据、记预算、记降级 | 任何决策 |
+
+节点若自己决定重试,状态机就失去调度权 —— 这是放弃 BehaviorTree 之后必须守住的边界。
 
 ### 状态与转移
 
-`IDLE -> RUNNING -> SUCCESS / RETRYING / FAILED / SKIPPED / TIMEOUT`
+```
+IDLE -> RUNNING -> SUCCESS / RETRYING -> ... -> FAILED / SKIPPED
+```
 
-- 成功 -> 下一节点
-- 失败 -> 重试(`retry` 次,间隔 `retry_interval`) -> 仍失败 -> 走 `fallback` 降级
-- **超时 -> 不重试,直接走降级**(设计决策:超时说明环境卡死,重试大概率再超时,快速降级更有价值)
-- 全局重试预算 `retry_budget` 耗尽 -> 立即判失败
-- 最终失败 -> 后续所有节点 SKIPPED(连坐)
+- 成功 → 下一节点
+- 失败 → 重试(`retry` 次,间隔 `retry_interval`)→ 仍失败 → 走 `fallback`
+- **超时 → 不重试**,直接走降级。超时说明节点卡死,重试大概率再卡一次
+- 全局重试预算(默认 10 次)耗尽 → 立即判失败
+- 无 fallback 且 `on_fail: abort` → 后续节点全部 SKIPPED(连坐)
 
-### Parallel 失败策略(设计决策)
+### 几个关键取舍
 
-**等所有分支跑完再汇总,任一分支 FAILED/TIMEOUT 则整体 FAILED。**
-不选"一失败立即取消其余分支":避免线程强杀和清理的复杂性,Mock 场景下分支耗时短,等完的代价可忽略。
+**两层重试预算**:每步有 `retry`,全局有 `retry_budget`。只用每步,20 个节点 × 3 次重试
+最坏跑 80 遍;只用全局,预算耗尽后偶发抖动也会让任务失败。
 
-### fallback 语义(设计决策)
+**fallback 只跳一层**:a→b 跑一次,b 再失败就停。不递归,所以 a→b、b→a 这种配置
+不会无限跳 —— 这是官方明确要求的终止条件。
 
-主节点最终失败 -> 执行 fallback 指向的节点(它自带重试) -> 成功则**继续主流程**(fallback_used 记录降级发生) -> 失败则后续 SKIPPED。
+**Parallel 的失败策略**:`any_fail`(默认)任一分支失败即 `cancel()` 其余分支;
+`all_must_succeed` 等全部自然结束。两种都做,由 YAML 的 `fail_policy` 选。
 
-## YAML DSL 字段
+**取消是协作式的**:`cancel()` 只置标志位,Mock 节点把 sleep 切成 10ms 片检查一次。
+Python 没有安全的线程强杀,这是唯一可靠做法。
 
-| 字段 | 适用 | 说明 |
-| :-- | :-- | :-- |
-| `name` | 全部 | 节点名(唯一) |
-| `type` | 全部 | 节点类名(见 REGISTRY) |
-| `timeout` | 全部 | 单次执行超时(秒),默认不限 |
-| `retry` | 全部 | 失败重试次数,默认 0 |
-| `retry_interval` | 全部 | 重试间隔(秒),默认 0.5 |
-| `fallback` | 全部 | 降级目标节点名 |
-| `fail_times` | 全部 | Mock:前 N 次故意失败 |
-| `duration` | 全部 | Mock:模拟执行耗时(秒) |
-| `pose` | NavigateTo | 固定目标坐标 |
-| `pose_from_context` | NavigateTo | 从上下文读坐标(如 `target_pose`) |
-| `target_class` / `min_confidence` | DetectTarget | 目标类别/置信度阈值 |
-| `grasp_type` | ExecuteGrasp | 抓取方式 |
-| `text` | SpeakTTS | 播报内容 |
-| `branches` | Parallel | 子任务列表 |
+**超时分两层**:分支的超时归分支自己的 `run_in_thread`,整体的归状态机外层。
+早期版本两层共用同一个 timeout,两边同时到期、日志里出现两次超时记录,才改成现在这样。
+
+## YAML DSL
+
+完整字段、默认值、缺字段的报错信息、并发写法、完整示例:`docs/dsl.md`。
+
+节点类型:`WaitForTrigger` `NavigateTo` `DetectTarget` `ExecuteGrasp` `SpeakTTS` `Parallel`。
+新增节点只需在 `task_fsm/registry.py` 的 `REGISTRY` 加一行,内核不改。
 
 ## task_report.json
 
+字段名按官方 README §2.4:
+
 ```json
 {
-  "mission_id": "grab_and_return",
-  "final": "SUCCESS",
-  "tasks": {
-    "detect_qr": {"type": "DetectTarget", "status": "SUCCESS",
-                   "attempts": 1, "retries": 0, "duration": 0.2,
-                   "fallback": null}
-  },
-  "fallback_used": {},
-  "retry_budget_left": 10,
-  "final_context": {"target_pose": [1.0, 2.0, 0.0], "...": "..."}
+  "task_id": "grab_and_return",
+  "result": "SUCCESS",
+  "total_elapsed_s": 1.61,
+  "steps": [
+    {"name": "wait_start", "type": "WaitForTrigger", "status": "SUCCESS",
+     "elapsed_s": 0.104, "retries": 0, "degraded": false}
+  ],
+  "final_context": {"target_id": "qrcode", "target_pose": [1.0, 2.0, 0.0]}
 }
 ```
 
-每个节点记录:最终状态 / 执行次数 / 重试次数 / 耗时 / 降级目标;外加最终上下文。
+`result` 四种取值:`SUCCESS` / `FAILED` / `TIMEOUT`(任务级 deadline)/ `ABORTED`(急停等外部中断)。
 
-## Mock 说明与真实 ROS2 的对应
+## 核心行数
 
-Mock 用 `fail_times` + `duration` 替代真实硬件交互,保证离线可测、结果可复现。
-真实化时只需替换各节点 `execute()` 内部为 rclpy 调用(接口形状见 `mock/ros2.py`),
-框架代码零改动 —— 这是"分权"架构的直接收益。
+```bash
+wc -l task_fsm/core.py    # 199
+```
+
+统计范围:状态常量 + `TaskNode` + `Parallel` + `StateMachine`。
+不含 `context.py`(数据结构)、`nodes.py`(节点实现)、`logger.py`(输出)、
+`registry.py`(工厂)、`run_task.py`(入口与报告)。
+
+## Mock 与真实 ROS2 的对应
+
+Mock 用 `fail_times` + `duration` 替代硬件交互,保证离线可测、结果可复现。
+真实化时只替换各节点 `execute()` 内部为 rclpy 调用,框架代码零改动。
+`MockNode` 基类里的计时与人为失败能力不会进入真实节点。
 
 ## 已知限制(如实披露)
 
-1. 超时后子线程无法强杀,只能不再等它;真实场景需用可取消的 Action。
-2. Parallel 分支支持各自独立 timeout(分支自己的 timeout 字段);
-   节点整体 timeout 由状态机外层判定,内部不做二次超时(避免竞争)。
-3. fallback 只支持单层跳转,不做 fallback 链。
+1. **节点不对外暴露执行进度**:长任务只能看到"运行中",看不到百分比。真实节点接入时
+   需要在 `TaskContext.shared` 写进度字段。
+2. **取消要节点配合**:卡在第三方阻塞调用里的节点收不到取消标志,只能等它返回。
+3. **`!include` 不支持**:位姿只能内联或从上下文取,详见 `docs/dsl.md` §9。
+4. **`any_fail` 的分支不是瞬间消失**:`cancel()` 后线程要等自己检查标志位退出。
 
 ## AI 使用声明(如实披露)
 
-本模块代码由 AI(WorkBuddy/Claude)在作者口述需求与设计讨论后生成:
-- 作者完成了模块选型分析、与 M0-4 的架构对比、状态机设计要点确认;
-- 代码(框架/Mock 节点/DSL 加载器/单测)由 AI 生成,作者逐行阅读并验证运行结果;
-- README 与设计决策说明由 AI 起草,作者审核;
+本模块代码由 AI(WorkBuddy)在作者提出需求与设计讨论后生成:
+
+- 作者完成了模块选型分析、与 M0-4 调度器的架构对比、状态机设计要点的确认;
+- 代码(框架 / 节点 / DSL 加载器 / 单测 / 文档)由 AI 生成,作者逐行阅读并验证运行结果;
+- 目录结构按官方 README 的「交付物与格式」重构,逻辑未重写,仅拆分与补齐缺失能力
+  (`on_fail`、`fail_policy`、`cancel()`、报告字段);
 - 按考核规则,本模块接受现场答辩检验,作者已按答辩准备文档复习全部实现细节。

@@ -8,13 +8,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mock_nodes import DetectTarget, NavigateTo, SpeakTTS, WaitForTrigger
-from state_machine import (FAILED, SKIPPED, SUCCESS, TIMEOUT, Parallel,
-                           StateMachine, TaskContext, TaskNode)
+from task_fsm import (FAILED, SKIPPED, SUCCESS, TIMEOUT, DetectTarget,
+                      NavigateTo, Parallel, SpeakTTS, StateMachine,
+                      TaskContext, TaskNode, WaitForTrigger)
+from task_fsm.nodes import MockNode
 
 
-class Dummy(TaskNode):
-    """最小可测节点:行为完全由参数控制。"""
+class Dummy(MockNode):
+    """最小可测节点:行为完全由参数控制(run_once 来自 MockNode)。"""
 
     def execute(self, ctx):
         return self.run_once(ctx)
@@ -44,7 +45,7 @@ def test_node_timeout_returns_timeout():
     machine = StateMachine([node])
     assert machine.run() == FAILED          # 无 fallback -> 最终 FAILED
     assert node.attempts == 1               # 超时不重试
-    assert machine.records["t"]["status"] == FAILED
+    assert machine.records["t"]["status"] == TIMEOUT   # 报告里要能区分超时与失败
 
 
 # ---------- 状态机层 ----------
@@ -56,7 +57,7 @@ def test_fallback_success_continues():
     after = Dummy("after")
     machine = StateMachine([main, backup, after])
     assert machine.run() == SUCCESS
-    assert machine.records["main"]["status"] == FAILED
+    assert machine.records["main"]["status"] == SKIPPED   # 降级成功标 SKIPPED
     assert machine.ctx.fallback_used == {"main": "backup"}
     assert machine.records["after"]["status"] == SUCCESS
 
@@ -82,9 +83,12 @@ def test_fallback_target_not_reexecuted():
 
 def test_fallback_target_missing_raises():
     """fallback 指向不存在的节点 -> 构造时即报错。"""
-    import pytest
-    with pytest.raises(ValueError):
+    try:
         StateMachine([Dummy("t", fallback="ghost")])
+    except ValueError as e:
+        assert "ghost" in str(e)
+        return
+    raise AssertionError("fallback 指向不存在的节点应抛 ValueError")
 
 
 def test_downstream_skipped_after_final_failure():
@@ -152,18 +156,33 @@ def test_navigate_fails_without_context():
 
 # ---------- 报告 ----------
 
-def test_report_structure(tmp_path):
+def test_report_structure():
+    """报告字段按官方 README §2.4:task_id / result / total_elapsed_s / steps。"""
+    from run_task import build_report
     detect = DetectTarget("detect")
     nav = NavigateTo("nav", pose_from_context="target_pose")
     machine = StateMachine([detect, nav], mission_id="unit_test")
     machine.run()
-    path = tmp_path / "task_report.json"
-    machine.save_report(str(path))
-    data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["mission_id"] == "unit_test"
-    assert data["final"] == "SUCCESS"
-    assert set(data["tasks"]) == {"detect", "nav"}
-    for rec in data["tasks"].values():
-        assert {"status", "attempts", "retries", "duration",
-                "fallback"} <= set(rec)
+    data = build_report(machine, 1.0)
+    assert data["task_id"] == "unit_test"
+    assert data["result"] == "SUCCESS"
+    assert [s["name"] for s in data["steps"]] == ["detect", "nav"]
+    for step in data["steps"]:
+        assert {"name", "type", "status", "elapsed_s",
+                "retries", "degraded"} <= set(step)
     assert data["final_context"]["target_pose"] == [1.0, 2.0, 0.0]
+
+
+if __name__ == "__main__":
+    passed = failed = 0
+    for fname, fn in sorted(globals().items()):
+        if fname.startswith("test_") and callable(fn):
+            try:
+                fn()
+                passed += 1
+                print(f"  PASS  {fname}")
+            except AssertionError as e:
+                failed += 1
+                print(f"  FAIL  {fname}  {e}")
+    print(f"\n{passed} passed, {failed} failed")
+    sys.exit(1 if failed else 0)

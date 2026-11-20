@@ -5,9 +5,10 @@ import shutil
 import sys
 import tempfile
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_ROOT, "host_side"))
 
-from hotswap import MODELS, HotSwapManager             # noqa: E402
+from hot_switch import MODELS, HotSwapManager       # noqa: E402
 
 
 def _tmpdir():

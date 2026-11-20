@@ -1,5 +1,5 @@
 ts,type,old_value,new_value,operator,exp_name,note
-2026-11-19T21:31:27.657+08:00,param,?,0.8,exp_runner,,"ros2 param set ... nav_speed=0.8 (热加载,不重启)"
-2026-11-19T21:31:27.657+08:00,param,?,10.0,exp_runner,,"ros2 param set ... perception_hz=10.0 (热加载,不重启)"
-2026-11-19T21:31:27.657+08:00,param,?,0.7,exp_runner,,"ros2 param set ... conf_threshold=0.7 (热加载,不重启)"
-2026-11-19T21:31:27.657+08:00,param,?,yolov8n_fp32,exp_runner,,"ros2 param set ... model=yolov8n_fp32 (热加载,不重启)"
+2026-11-20T23:52:36.396+08:00,param,?,0.8,exp_runner,,"ros2 param set ... nav_speed=0.8 (热加载,不重启)"
+2026-11-20T23:52:36.396+08:00,param,?,10.0,exp_runner,,"ros2 param set ... perception_hz=10.0 (热加载,不重启)"
+2026-11-20T23:52:36.396+08:00,param,?,0.7,exp_runner,,"ros2 param set ... conf_threshold=0.7 (热加载,不重启)"
+2026-11-20T23:52:36.396+08:00,param,?,yolov8n_fp32,exp_runner,,"ros2 param set ... model=yolov8n_fp32 (热加载,不重启)"

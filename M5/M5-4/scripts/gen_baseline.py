@@ -106,6 +106,11 @@ def main():
             with open(os.path.join(work, "baseline.yaml"), "w",
                       encoding="utf-8") as f2:
                 json.dump(baseline, f2, ensure_ascii=False, indent=2)
+    # 无条件再写一份 JSON 副本:异机验证时对方可能没装 pyyaml,
+    # 而本机的 baseline.yaml 可能是 YAML 文本 —— 用 JSON 兜底才不会挂。
+    with open(os.path.join(work, "baseline.json"), "w",
+              encoding="utf-8") as f:
+        json.dump(baseline, f, ensure_ascii=False, indent=2)
     import shutil
     shutil.copy(model_path, os.path.join(work, "models", args.model))
 
@@ -115,13 +120,13 @@ set -u
 cd "$(dirname "$0")"
 python3 - << 'PYEOF'
 import hashlib, json, sys
-try:
+try:                                  # 优先 JSON:标准库,异机一定有
+    with open("baseline.json", encoding="utf-8") as f:
+        b = json.load(f)
+except FileNotFoundError:             # 老包没有 json 副本时退回 YAML
     import yaml
     with open("baseline.yaml", encoding="utf-8") as f:
         b = yaml.safe_load(f)
-except ImportError:
-    with open("baseline.yaml", encoding="utf-8") as f:
-        b = json.load(f)
 fails = []
 for k, th in b["thresholds"].items():
     if k not in b["params"]:
@@ -152,8 +157,8 @@ PYEOF
     date = datetime.now().strftime("%Y%m%d")
     out = os.path.join(DIST_DIR, f"baseline_package_{date}.tar.gz")
     with tarfile.open(out, "w:gz") as tar:
-        for name in ("baseline.yaml", "models", "verify_baseline.sh",
-                     "README.md"):
+        for name in ("baseline.yaml", "baseline.json", "models",
+                     "verify_baseline.sh", "README.md"):
             tar.add(os.path.join(work, name), arcname=name)
     shutil.rmtree(work)
     print(f"[OK] 基线包已生成: {os.path.relpath(out, ROOT)}")

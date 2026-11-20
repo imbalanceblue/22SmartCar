@@ -10,10 +10,11 @@ import threading
 import time
 
 _PORT = 8099
-_HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, _HERE)
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_ROOT, "host_side"))
+sys.path.insert(0, os.path.join(_ROOT, "robot_side"))
 
-import server as srv                               # noqa: E402
+import app as srv                                  # noqa: E402
 
 
 def _start_server():

@@ -16,12 +16,13 @@ from http.server import ThreadingHTTPServer
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
-sys.path.insert(0, _ROOT)
+sys.path.insert(0, os.path.join(_ROOT, "host_side"))
+sys.path.insert(0, os.path.join(_ROOT, "robot_side"))
 
 import operator_terminal as OT                        # noqa: E402
 from terminal_app import TerminalApp                  # noqa: E402
 
-MISSION = os.path.join(_ROOT, "mission_race.json")
+MISSION = os.path.join(_ROOT, "config", "mission_race.json")
 
 
 def _wait(cond, timeout, step=0.1):
