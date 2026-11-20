@@ -49,7 +49,7 @@ M5/M5-3/
 ├── docs/
 │   ├── design.md                # 集成架构 + 分层急停
 │   ├── audit_format.md          # 审计字段 + 哈希链算法
-│   └── ui.png                   # 界面功能分区图
+│   └── ui.png                   # 真实运行截图
 ├── tests/                       # 18 用例
 └── README.md
 ```

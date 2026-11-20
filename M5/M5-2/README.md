@@ -41,7 +41,7 @@ M5/M5-2/
 ├── docs/
 │   ├── architecture.md          # 双轨通信 + 为何不传图
 │   ├── fault_rules.md           # 五类故障的阈值与持续时间
-│   └── layout.png               # 界面五区布局图
+│   └── layout.png               # 真实运行截图(五区标注)
 ├── tests/                       # 9 单测 + 1 全流程集成
 └── README.md
 ```
