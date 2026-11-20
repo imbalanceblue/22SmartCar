@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>实验对比</title><style>body{background:#0f1115;color:#e8eaed;
+font-family:sans-serif;margin:24px}canvas{background:#171a21;
+border-radius:8px}</style></head><body><h2>实验对比(M5-4)</h2>
+<canvas id="cv" width="760" height="420"></canvas><div id="legend"></div>
+<script>const D={"labels": ["nav_speed_0.8", "nav_speed_0.9", "nav_speed_1.0"], "series": [["nav_time", [51.133, 46.0, 41.933]], ["success_rate", [1.0, 1.0, 1.0]], ["cpu_peak", [46.567, 48.567, 50.033]]]};const cv=document.getElementById('cv'),x=cv.getContext('2d');
+const colors=['#4fd1c5','#f6ad55','#fc8181','#9f7aea'];const P=50;
+let mx=0;D.series.forEach(s=>s[1].forEach(v=>{if(Math.abs(v)>mx)mx=Math.abs(v)}));
+mx=mx||1;D.series.forEach((s,si)=>{x.strokeStyle=colors[si%4];x.lineWidth=2;x.beginPath();
+s[1].forEach((v,i)=>{const px=P+i*((cv.width-2*P)/Math.max(1,D.labels.length-1));
+const py=cv.height-P-(v/mx)*(cv.height-2*P);i?x.lineTo(px,py):x.moveTo(px,py)});
+x.stroke();s[1].forEach((v,i)=>{const px=P+i*((cv.width-2*P)/Math.max(1,D.labels.length-1));
+const py=cv.height-P-(v/mx)*(cv.height-2*P);x.fillStyle=colors[si%4];
+x.beginPath();x.arc(px,py,4,0,7);x.fill()})});
+x.fillStyle='#e8eaed';D.labels.forEach((l,i)=>{x.fillText(l,P+i*((cv.width-2*P)/Math.max(1,D.labels.length-1))-20,cv.height-15)});
+const lg=document.getElementById('legend');lg.innerHTML=D.series.map((s,i)=>
+`<span style="color:${colors[i%4]}">■</span> ${s[0]}(max=${mx.toFixed(2)})`).join(' ');
+</script></body></html>

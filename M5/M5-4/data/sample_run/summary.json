@@ -1,0 +1,134 @@
+{
+  "run": "run_005",
+  "reviewed_at": "2026-11-20T23:52:37+08:00",
+  "mission_id": "exp_run_005_1",
+  "final": "SUCCESS",
+  "total_s": 47.5,
+  "tasks": {
+    "navigate_to_scan": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 8.55,
+      "fallback": null
+    },
+    "detect_qr": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 7.12,
+      "fallback": null
+    },
+    "navigate_to_grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 11.88,
+      "fallback": null
+    },
+    "grasp": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 7.12,
+      "fallback": null
+    },
+    "navigate_to_place": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 9.5,
+      "fallback": null
+    },
+    "speak_done": {
+      "status": "SUCCESS",
+      "attempts": 1,
+      "retries": 0,
+      "duration": 3.33,
+      "fallback": null
+    }
+  },
+  "metrics": {
+    "perception_freq": 11.3,
+    "confidence": 0.798,
+    "cpu_peak": 49.6,
+    "temp_peak": 46.0,
+    "battery_min": 10.9,
+    "nav_success_rate": 1.0
+  },
+  "faults": [],
+  "root_causes": [],
+  "estop_count": 0,
+  "switch_changes": [
+    {
+      "ts": "2026-11-20T23:52:37.480+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.9"
+    },
+    {
+      "ts": "2026-11-20T23:52:37.480+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "12.0"
+    },
+    {
+      "ts": "2026-11-20T23:52:37.480+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "0.7"
+    },
+    {
+      "ts": "2026-11-20T23:52:37.480+08:00",
+      "type": "param",
+      "old": "?",
+      "new": "yolov8n_int8"
+    }
+  ],
+  "compare_with_prev": {
+    "metrics": {
+      "confidence": {
+        "prev": 0.729,
+        "cur": 0.798,
+        "delta": 0.069
+      },
+      "cpu_peak": {
+        "prev": 49.1,
+        "cur": 49.6,
+        "delta": 0.5
+      },
+      "nav_success_rate": {
+        "prev": 0.0,
+        "cur": 1.0,
+        "delta": 1.0
+      },
+      "perception_freq": {
+        "prev": 1.86,
+        "cur": 11.3,
+        "delta": 9.44
+      }
+    },
+    "new_faults": [],
+    "gone_faults": [
+      "camera_degraded"
+    ],
+    "switch_changes": [
+      {
+        "type": "param",
+        "old": "?",
+        "new": "0.9"
+      },
+      {
+        "type": "param",
+        "old": "?",
+        "new": "12.0"
+      },
+      {
+        "type": "param",
+        "old": "?",
+        "new": "yolov8n_int8"
+      }
+    ],
+    "time_delta_s": 1.62
+  }
+}
