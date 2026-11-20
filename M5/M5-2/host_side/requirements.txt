@@ -1,0 +1,5 @@
+# M5-2 主机端依赖
+#
+# 实现刻意只用标准库(ThreadingHTTPServer + SSE),因此运行期零第三方依赖。
+# 这里列出的是"工具脚本"用到的可选依赖,不影响 app.py 启动。
+psutil>=5.9        # tools/measure_resources.py 量 CPU/内存(不用它也能跑,退化到 /proc)

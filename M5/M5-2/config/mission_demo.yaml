@@ -1,0 +1,45 @@
+# M5-2 演示专用编排:在 M5-1 主流程基础上给识别/抓取加了模拟耗时,
+# 让"拔相机 -> 重试 -> 降级变橙"的联动肉眼可见。节点接口与 M5-1 完全一致。
+mission_id: dashboard_demo
+tasks:
+  - name: wait_start
+    type: WaitForTrigger
+    timeout: 30
+    duration: 0.1
+
+  - name: navigate_to_scan
+    type: NavigateTo
+    pose: [0.0, 0.0, 0.0]
+    duration: 0.2
+
+  - name: detect_qr
+    type: DetectTarget
+    target_class: "qrcode"
+    min_confidence: 0.7
+    timeout: 15
+    retry: 2
+    fallback: navigate_to_scan
+    duration: 0.15
+
+  - name: navigate_to_grasp
+    type: NavigateTo
+    pose_from_context: target_pose
+    retry: 1
+    duration: 0.1
+
+  - name: grasp
+    type: ExecuteGrasp
+    grasp_type: "top_down"
+    retry: 2
+    fallback: navigate_to_grasp
+    duration: 0.15
+
+  - name: navigate_to_place
+    type: NavigateTo
+    pose: [5.0, 5.0, 0.0]
+    duration: 0.15
+
+  - name: speak_done
+    type: SpeakTTS
+    text: "任务完成"
+    duration: 0.1

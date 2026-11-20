@@ -1,0 +1,41 @@
+# M5-2 零硬编码配置:改这里就改行为,不用动代码(现场会改这里看是否生效)
+#
+# 话题用通配符模式声明订阅范围;topics 段是"期望频率表",
+# 聚合器据此算丢包率与降级判定 —— 两处都不写死在任何 .py 里。
+
+topic_patterns:
+  - "/perception/**"
+  - "/navigation/**"
+  - "/control/**"
+  - "/hw/**"
+  - "/referee/**"
+
+# 期望频率表(Hz):聚合器按它算 freq / loss / 降级阈值
+topics:
+  "/perception/targets": 10.0
+  "/navigation/pose": 2.0
+  "/referee/status": 1.0
+
+special_topics:
+  task_state: "/dashboard/task_state"
+  system_ready: "/system_ready"
+
+publish:
+  metrics_hz: 10            # 人眼舒适刷新率与带宽的折中(见 docs/architecture.md)
+  faults_topic: "/dashboard/faults"
+
+# 故障判定阈值(全部在小车端判定,主机只负责显示)
+fault_rules:
+  camera_freq_ratio: 0.5    # 实测频率 < 期望的 50% 判降级
+  camera_window_s: 3.0      # 统计窗口
+  topic_timeout_s: 3.0      # 超过此时长无数据判掉线
+  cpu_high_pct: 85.0
+  temp_high_c: 85.0
+  voltage_low_v: 10.5
+
+# 比赛默认不传图像(现场会检查这一项)
+video:
+  enable: false
+  hz: 1
+  width: 320
+  height: 240
