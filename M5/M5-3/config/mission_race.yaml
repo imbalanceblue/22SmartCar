@@ -1,0 +1,52 @@
+# M5-3 比赛编排:裁判发车后从 wait_start 开始,感知失败退回重新导航
+mission_id: race_2026
+tasks:
+  - name: wait_start
+    type: WaitForTrigger
+    timeout: 60
+    duration: 0.1
+
+  - name: navigate_to_scan
+    type: NavigateTo
+    pose: [0.0, 0.0, 0.0]
+    timeout: 60
+    duration: 0.25
+    retry: 1
+
+  - name: detect_qr
+    type: DetectTarget
+    target_class: qrcode
+    min_confidence: 0.7
+    timeout: 60
+    duration: 0.3
+    retry: 2
+    fallback: navigate_to_scan      # 识别失败 -> 退回重新导航(题面要求的降级链路)
+
+  - name: navigate_to_grasp
+    type: NavigateTo
+    pose_from_context: target_pose
+    timeout: 60
+    duration: 0.2
+    retry: 1
+    fallback: navigate_to_scan
+
+  - name: grasp
+    type: ExecuteGrasp
+    grasp_type: top_down
+    timeout: 60
+    duration: 0.25
+    retry: 2
+    fallback: navigate_to_grasp
+
+  - name: navigate_to_place
+    type: NavigateTo
+    pose: [5.0, 5.0, 0.0]
+    timeout: 60
+    duration: 0.25
+    fallback: navigate_to_grasp
+
+  - name: speak_done
+    type: SpeakTTS
+    text: 任务完成
+    timeout: 60
+    duration: 0.1

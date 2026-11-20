@@ -1,0 +1,68 @@
+# M5-3 终端配置:可切清单与阈值
+#
+# 说明:hot_switch.py 里的 SCENES / MODELS / PARAMS 是"默认清单",
+# 本文件是给现场改的口径(不重启节点也能生效的只有 PARAMS 的滑块)。
+# 现场若要加模型/场景,改这里 + 同步 hot_switch 的清单即可。
+
+scenes:
+  - scene_race.yaml
+  - scene_nav_speed_0.9.yaml
+  - scene_lidar_only.yaml
+  - scene_night.yaml
+
+models:
+  yolov8n_fp32:
+    fps: 12.0
+    size_mb: 12.8
+    map: 0.850
+  yolov8s_fp16:
+    fps: 18.0
+    size_mb: 22.4
+    map: 0.872
+  yolov8n_int8:
+    fps: 32.0
+    size_mb: 6.2
+    map: 0.832
+
+# 滑块:ros2 param set 的目标节点与参数名(热切日志会记旧值/新值)
+params:
+  nav_speed:
+    min: 0.2
+    max: 1.5
+    step: 0.1
+    value: 0.8
+    unit: m/s
+    node: /nav_controller
+    ros_name: max_linear_speed
+  perception_hz:
+    min: 5.0
+    max: 30.0
+    step: 1.0
+    value: 10.0
+    unit: Hz
+    node: /perception
+    ros_name: publish_rate
+  confidence_threshold:
+    min: 0.3
+    max: 0.95
+    step: 0.05
+    value: 0.7
+    unit: ""
+    node: /perception
+    ros_name: conf_threshold
+
+# 看门狗:感知频率低于期望的这个比例并持续 N 秒 -> 判视觉降级
+watchdog:
+  freq_ratio: 0.5
+  debounce_s: 1.0
+
+# 接口与端口
+server:
+  port: 8081            # 8080 留给 M5-2 仪表盘,两者会同时跑
+  tick_hz: 10
+
+# 审计
+audit:
+  dir: .
+  prefix: audit_log_
+  hash: sha256
