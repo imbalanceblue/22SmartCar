@@ -1,9 +1,0 @@
-{"ts": 1000, "event": "metric", "name": "perception_freq", "value": 9.7}
-{"ts": 1000, "event": "metric", "name": "confidence", "value": 0.84}
-{"ts": 1001, "event": "metric", "name": "perception_freq", "value": 9.5}
-{"ts": 1001, "event": "metric", "name": "confidence", "value": 0.85}
-{"ts": 1002, "event": "metric", "name": "perception_freq", "value": 0.0}
-{"ts": 1002, "event": "metric", "name": "confidence", "value": 0.5}
-{"ts": 1000, "event": "metric", "name": "cpu", "value": 51.0}
-{"ts": 1000, "event": "metric", "name": "battery", "value": 10.9}
-{"ts": 2000, "event": "fault", "type": "camera_degraded", "detail": "freq<10Hz", "action": "nav fallback to lidar_only", "cost_s": 9.2}

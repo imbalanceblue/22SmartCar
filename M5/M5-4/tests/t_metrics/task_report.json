@@ -1,1 +1,0 @@
-{"mission_id": "t_metrics", "final": "SUCCESS", "tasks": {"nav": {"type": "M", "status": "SUCCESS", "attempts": 2, "retries": 1, "duration": 12.5, "fallback": null}, "grasp": {"type": "M", "status": "SUCCESS", "attempts": 1, "retries": 0, "duration": 8.0, "fallback": null}}, "fallback_used": {}, "final_context": {}}

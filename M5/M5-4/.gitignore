@@ -2,3 +2,9 @@ __pycache__/
 .pytest_cache/
 dist/
 *.pyc
+
+# 测试运行时产物:由 tests/_make_run 自动重建,不入库
+tests/t_*/blackbox.jsonl
+tests/t_*/summary.json
+tests/t_*/task_report.json
+tests/t_*/review_*.md
